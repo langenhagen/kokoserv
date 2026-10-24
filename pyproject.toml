@@ -1,0 +1,18 @@
+[project]
+name = "kokoro-server"
+version = "0.1.0"
+description = "Keep the Kokoro TTS model loaded in a background server; a drop-in kokoro CLI client talks to it over a Unix domain socket."
+readme = "README.md"
+requires-python = ">=3.12,<3.13" # misaki 0.7.17 requires Python <3.13
+dependencies = [
+    "en-core-web-sm",
+    "kokoro>=0.7.16",
+    "sounddevice>=0.5.6",
+    "soundfile>=0.13.1",
+    "torch>=2.13.0",
+]
+
+[tool.uv.sources]
+# misaki downloads this spaCy model at runtime via pip if it is missing; pin it
+# here instead so that `uv sync` installs it reproducibly.
+en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" }

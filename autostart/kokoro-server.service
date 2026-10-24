@@ -1,0 +1,12 @@
+# systemd user service: start the Kokoro server once at login, never restart it.
+# Install: see README.md, section "Autostart On Linux".
+[Unit]
+Description=Kokoro TTS server
+
+[Service]
+Type=simple
+ExecStart=%h/Dev/kokoserv/.venv/bin/python %h/Dev/kokoserv/kokoro_server.py
+Restart=no
+
+[Install]
+WantedBy=default.target

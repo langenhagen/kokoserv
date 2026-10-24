@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+macOS launchd user agent: start the Kokoro server once at login, never restart it.
+Install: see README.md, section "Autostart On macOS".
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.andreasl.kokoro-server</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/andreasl/Dev/kokoserv/.venv/bin/python</string>
+        <string>/Users/andreasl/Dev/kokoserv/kokoro_server.py</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>StandardOutPath</key>
+    <string>/Users/andreasl/.cache/kokoro-server/kokoro-server.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/andreasl/.cache/kokoro-server/kokoro-server.log</string>
+</dict>
+</plist>
