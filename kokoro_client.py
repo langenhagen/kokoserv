@@ -16,6 +16,8 @@ Usage:
         write the synthesized speech from FILE to x.wav instead of speaking
     kokoro_client.py FILE --speed 1.25
         speak the text file at 1.25x speed
+    kokoro_client.py FILE --voice bf_emma
+        speak the text file with the British English voice bf_emma
     kokoro_client.py --stop-server     stop the running server, freeing its memory
 
     kokoro_client.py --help        show help
@@ -207,6 +209,13 @@ def main() -> None:
         help="narration speed multiplier (default: %(default)s)",
     )
     parser.add_argument(
+        "--voice",
+        "-v",
+        default=DEFAULT_VOICE,
+        help="Kokoro voice name; its first letter selects the language, e.g. "
+        "'a' for American and 'b' for British English (default: %(default)s)",
+    )
+    parser.add_argument(
         "--stop-server",
         action="store_true",
         help="stop the running kokoro server and exit",
@@ -227,7 +236,7 @@ def main() -> None:
         parser.print_usage()
         sys.exit(2)
 
-    chunks = synthesize(text, args.speed, DEFAULT_VOICE)
+    chunks = synthesize(text, args.speed, args.voice)
     if args.out_file:
         write_file(chunks, args.out_file)
     else:

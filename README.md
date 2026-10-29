@@ -30,6 +30,7 @@ kokoro --clipboard             # speak the clipboard
 echo "hello" | kokoro          # speak piped text
 kokoro FILE --out-file x.wav   # write to a WAV file instead
 kokoro FILE --speed 1.25       # speak faster
+kokoro FILE --voice bf_emma    # speak with another voice
 kokoro --stop-server           # stop the server and free its memory
 ```
 
