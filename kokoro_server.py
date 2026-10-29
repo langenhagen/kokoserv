@@ -22,6 +22,7 @@ from contextlib import suppress
 from typing import IO, Any, cast
 
 from kokoro_protocol import (
+    DEFAULT_VOICE,
     LOCK_PATH,
     LOG_PATH,
     SOCKET_PATH,
@@ -29,9 +30,6 @@ from kokoro_protocol import (
     read_frame,
     send_frame,
 )
-
-VOICE = "af_heart"
-LANG_CODE = "a"
 
 logger = logging.getLogger("kokoro-server")
 
@@ -53,13 +51,16 @@ def _release_cached_device_memory(device: str) -> None:
 class SpeakHandler(socketserver.StreamRequestHandler):
     """Handle one request: synthesize text and stream audio back, or stop."""
 
-    def _speak(self, server: "KokoroServer", text: str, speed: float) -> None:
+    def _speak(
+        self, server: "KokoroServer", text: str, speed: float, voice: str
+    ) -> None:
         """Synthesize text chunk by chunk and send each chunk once it is ready."""
-        logger.info("speak: %d characters at speed %s", len(text), speed)
-        send_frame(self.request, {"type": "hello", "device": server.device})
-        generator = server.pipeline(
-            text, voice=VOICE, speed=speed, split_pattern=r"\n+"
+        logger.info(
+            "speak: %d characters at speed %s with voice %s", len(text), speed, voice
         )
+        pipeline = server.pipeline_for(voice)
+        send_frame(self.request, {"type": "hello", "device": server.device})
+        generator = pipeline(text, voice=voice, speed=speed, split_pattern=r"\n+")
         for index, (graphemes, phonemes, audio) in enumerate(generator):
             header = {
                 "type": "chunk",
@@ -84,7 +85,7 @@ class SpeakHandler(socketserver.StreamRequestHandler):
             send_frame(self.request, {"type": "done"})
             return
         try:
-            self._speak(server, request["text"], request["speed"])
+            self._speak(server, request["text"], request["speed"], request["voice"])
         except (BrokenPipeError, ConnectionResetError):
             logger.info("client disconnected, synthesis aborted")
         finally:
@@ -92,15 +93,30 @@ class SpeakHandler(socketserver.StreamRequestHandler):
 
 
 class KokoroServer(socketserver.UnixStreamServer):
-    """Unix socket server that holds the loaded Kokoro pipeline."""
+    """Unix socket server that holds the loaded Kokoro pipelines, one per language."""
 
     # pipeline is a kokoro.KPipeline; annotating it would import torch at load time.
     def __init__(self, pipeline: Any, device: str) -> None:  # noqa: ANN401 - see above
         """Bind the socket and keep the pipeline for the request handler."""
         super().__init__(str(SOCKET_PATH), SpeakHandler)
-        self.pipeline = pipeline
+        self.pipelines = {pipeline.lang_code: pipeline}
         self.device = device
         self.stop_requested = False
+
+    def pipeline_for(self, voice: str) -> Any:  # noqa: ANN401 - see __init__
+        """Return the pipeline for the voice's language, creating it on first use.
+
+        All pipelines share the model of the first one, so a new language costs
+        no second model load.
+        """
+        lang_code = voice[0]
+        if lang_code not in self.pipelines:
+            from kokoro import KPipeline  # noqa: PLC0415 - loaded by main() already
+
+            logger.info("creating pipeline for language code %s", lang_code)
+            model = next(iter(self.pipelines.values())).model
+            self.pipelines[lang_code] = KPipeline(lang_code=lang_code, model=model)
+        return self.pipelines[lang_code]
 
 
 def _acquire_single_instance_lock() -> IO[str] | None:
@@ -131,10 +147,10 @@ def _load_pipeline() -> tuple[Any, str]:
         else "cpu"
     )
     logger.info("device: %s", device)
-    pipeline = KPipeline(lang_code=LANG_CODE, device=device)
-    # Load the voice and run the device kernels once, so that the first real
-    # request is as fast as all later ones.
-    for _ in pipeline("Hello.", voice=VOICE):
+    pipeline = KPipeline(lang_code=DEFAULT_VOICE[0], device=device)
+    # Load the default voice and run the device kernels once, so that the first
+    # real request is as fast as all later ones.
+    for _ in pipeline("Hello.", voice=DEFAULT_VOICE):
         pass
     _release_cached_device_memory(device)
     return pipeline, device

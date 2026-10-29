@@ -9,7 +9,7 @@ is one frame:
 
 Requests (client -> server), one frame per connection:
 
-    {"command": "speak", "text": "...", "speed": 1.0}
+    {"command": "speak", "text": "...", "speed": 1.0, "voice": "af_heart"}
     {"command": "stop"}
 
 Responses (server -> client) to "speak":
@@ -32,6 +32,9 @@ from pathlib import Path
 from typing import Any
 
 SAMPLERATE = 24000
+# Kokoro voice names start with their language code, e.g. "a" for American
+# English in "af_heart" and "b" for British English in "bf_emma".
+DEFAULT_VOICE = "af_heart"
 
 HEADER_LENGTH = struct.Struct(">I")
 

@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from kokoro_protocol import (
+    DEFAULT_VOICE,
     LOG_PATH,
     SAMPLERATE,
     SOCKET_PATH,
@@ -131,10 +132,13 @@ def stop_server() -> None:
     print("kokoro: server stopped", file=sys.stderr)
 
 
-def synthesize(text: str, speed: float) -> Iterator[tuple[dict[str, Any], bytes]]:
+def synthesize(
+    text: str, speed: float, voice: str
+) -> Iterator[tuple[dict[str, Any], bytes]]:
     """Yield (chunk header, float32 PCM audio) pairs as the server sends them."""
     with connect_or_start_server() as sock, sock.makefile("rb") as rfile:
-        send_frame(sock, {"command": "speak", "text": text, "speed": speed})
+        request = {"command": "speak", "text": text, "speed": speed, "voice": voice}
+        send_frame(sock, request)
         while True:
             frame = read_frame(rfile)
             if frame is None:
@@ -223,7 +227,7 @@ def main() -> None:
         parser.print_usage()
         sys.exit(2)
 
-    chunks = synthesize(text, args.speed)
+    chunks = synthesize(text, args.speed, DEFAULT_VOICE)
     if args.out_file:
         write_file(chunks, args.out_file)
     else:
